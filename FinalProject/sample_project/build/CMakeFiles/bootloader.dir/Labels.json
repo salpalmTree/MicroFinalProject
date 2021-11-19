@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/CMakeFiles/bootloader"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/CMakeFiles/bootloader.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/CMakeFiles/bootloader-complete.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+		},
+		{
+			"file" : "/Users/salpalma/esp/ESP32_Projects/FinalProject/sample_project/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"bootloader"
+		],
+		"name" : "bootloader"
+	}
+}
