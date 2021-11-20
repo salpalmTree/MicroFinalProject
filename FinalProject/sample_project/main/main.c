@@ -282,10 +282,6 @@ function toggleCheckbox(element){var http = new XMLHttpRequest(); if(element.che
         00 -> no direction
     ex: 
         0b1001 -> direction is up from first floor
-
-
-
-
     dir u -> up
     dir d -> down
     dir s -> stay/tbd
@@ -296,6 +292,7 @@ function toggleCheckbox(element){var http = new XMLHttpRequest(); if(element.che
 #define FIRSTFLOOR 23
 #define SECONDFLOOR 4
 #define THIRDFLOOR 21
+#define MOTOR 22
 #define BUZZ 18
 int gdCode = 0b0000; 
 bool Functional = true;
@@ -380,8 +377,8 @@ static void http_server_netconn_serve(struct netconn *conn)
         {
             if(buf[5] == '3' && buf[6] == 'd')
             {
-                gdCode = 0b1011;             //3 DOWN
-                xSemaphoreGive(FirstTask); 
+                gdCode = 0b1011;             //3 DOWN 
+                xSemaphoreGive(FirstTask);
             }
             else if(buf[5] == '2' && buf[6] == 'u' && buf[7] == 'p')
             {
@@ -410,8 +407,8 @@ static void http_server_netconn_serve(struct netconn *conn)
             }  
             else if(buf[5] == '1')
             {
-                gdCode = 0b0001; 
-                xSemaphoreGive(FirstTask); 
+                gdCode = 0b0001;
+                xSemaphoreGive(FirstTask);  
             } 
             else if(buf[5] == 'f')
             {
@@ -483,6 +480,11 @@ void Task1(void *pvParameter)
                     dir = 'u'; 
                     xSemaphoreGive(readyToPack); 
                 }
+                else
+                {
+                    dir = 's'; 
+                    xSemaphoreGive(readyToPack); 
+                }
             }
             else if(gdCode == 0b1110) //up from 2
             {
@@ -492,10 +494,14 @@ void Task1(void *pvParameter)
                     dir = 'u'; 
                     xSemaphoreGive(readyToPack); 
                 }
-                else 
+                else if(destination < curr) 
                 {
                     dir = 'd'; 
                     xSemaphoreGive(readyToPack); 
+                }
+                else 
+                {
+                    dir = 's'; 
                 }
             }
             else if(gdCode == 0b1010) //down form 2
@@ -506,9 +512,14 @@ void Task1(void *pvParameter)
                     dir = 'u';
                     xSemaphoreGive(readyToPack); 
                 }
-                else
+                else if (destination < curr)
                 {
                     dir = 'd'; 
+                    xSemaphoreGive(readyToPack); 
+                }
+                else 
+                {
+                    dir = 's'; 
                     xSemaphoreGive(readyToPack); 
                 }
             }
@@ -518,6 +529,11 @@ void Task1(void *pvParameter)
                 if(destination < curr)
                 {
                     dir = 'd'; 
+                    xSemaphoreGive(readyToPack); 
+                }
+                else
+                {
+                    dir = 's'; 
                     xSemaphoreGive(readyToPack); 
                 }
             }
@@ -539,9 +555,6 @@ void Task1(void *pvParameter)
                 dir = 's'; 
                 xSemaphoreGive(readyToPack); 
             }
-            duty = 100; 
-            ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, duty); 
-            ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0); 
 
         }
         if(xSemaphoreTake(statusTask1, portMAX_DELAY))
@@ -607,116 +620,141 @@ void Task3(void *pvParameter)
                     }
                     else
                     {
-                        RecStruc.direction = 's'; 
+                        RecStruc.direction = 's';                       
                     }
                 }
-                if(RecStruc.floorToGo == 3)
+                if(RecStruc.floorToGo != RecStruc.curFloor)
                 {
-                    if(RecStruc.curFloor == 1)
+                    duty = 100; //close
+                    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, duty); 
+                    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0); 
+                    gpio_set_level(MOTOR, 1); 
+                    if(RecStruc.floorToGo == 3)
                     {
-                        printf("going %c\n", RecStruc.direction); 
-                        gpio_set_level(FIRSTFLOOR, 1); 
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(THIRDFLOOR, 0);  
-                        vTaskDelay(500/portTICK_PERIOD_MS); 
+                        if(RecStruc.curFloor == 1)
+                        {
+                            printf("going %c\n", RecStruc.direction); 
+                            gpio_set_level(FIRSTFLOOR, 1); 
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(THIRDFLOOR, 0);  
+                            vTaskDelay(1000/portTICK_PERIOD_MS); 
 
-                        gpio_set_level(FIRSTFLOOR, 0); 
-                        gpio_set_level(SECONDFLOOR, 1); 
-                        vTaskDelay(500/portTICK_PERIOD_MS); 
+                            gpio_set_level(FIRSTFLOOR, 0); 
+                            gpio_set_level(SECONDFLOOR, 1); 
+                            vTaskDelay(1000/portTICK_PERIOD_MS); 
 
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(THIRDFLOOR, 1); 
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(THIRDFLOOR, 1); 
+                        }
+                        else if(RecStruc.curFloor == 2)
+                        {
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(SECONDFLOOR, 1); 
+                            gpio_set_level(FIRSTFLOOR, 0); 
+                            gpio_set_level(THIRDFLOOR, 0); 
+                            vTaskDelay(1000/portTICK_PERIOD_MS); 
 
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(THIRDFLOOR, 1); 
+                        }
+                        else 
+                        {
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(THIRDFLOOR, 1); 
+                        }  
                     }
-                    else if(RecStruc.curFloor == 2)
+                    else if(RecStruc.floorToGo == 2)
                     {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(SECONDFLOOR, 1); 
-                        gpio_set_level(FIRSTFLOOR, 0); 
-                        gpio_set_level(THIRDFLOOR, 0); 
-                        vTaskDelay(500/portTICK_PERIOD_MS); 
+                        if(RecStruc.curFloor == 3)
+                        {
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(THIRDFLOOR, 1); 
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(FIRSTFLOOR, 0); 
+                            vTaskDelay(1000/portTICK_PERIOD_MS); 
 
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(THIRDFLOOR, 1); 
-                    }
-                    else 
-                    {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(THIRDFLOOR, 1); 
-                    }
-                }
-                else if(RecStruc.floorToGo == 2)
-                {
-                    if(RecStruc.curFloor == 3)
-                    {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(THIRDFLOOR, 1); 
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(FIRSTFLOOR, 0); 
-                        vTaskDelay(500/portTICK_PERIOD_MS); 
+                            gpio_set_level(THIRDFLOOR, 0); 
+                            gpio_set_level(SECONDFLOOR, 1); 
+                        }
+                        else if(RecStruc.curFloor == 1)
+                        {
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(FIRSTFLOOR, 1); 
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(THIRDFLOOR, 0); 
+                            vTaskDelay(1000/portTICK_PERIOD_MS); 
 
-                        gpio_set_level(THIRDFLOOR, 0); 
-                        gpio_set_level(SECONDFLOOR, 1); 
-                    }
-                    else if(RecStruc.curFloor == 1)
-                    {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(FIRSTFLOOR, 1); 
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(THIRDFLOOR, 0); 
-                        vTaskDelay(500/portTICK_PERIOD_MS); 
-
-                        gpio_set_level(FIRSTFLOOR, 0); 
-                        gpio_set_level(SECONDFLOOR, 1); 
- 
+                            gpio_set_level(FIRSTFLOOR, 0); 
+                            gpio_set_level(SECONDFLOOR, 1);  
+                        }
+                        else
+                        {
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(SECONDFLOOR, 1); 
+                        }
                     }
                     else
                     {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(SECONDFLOOR, 1); 
+                        if(RecStruc.curFloor == 3)
+                        {   
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(THIRDFLOOR, 1); 
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(FIRSTFLOOR, 0); 
+                            vTaskDelay(1000/portTICK_PERIOD_MS);  
+
+                            gpio_set_level(THIRDFLOOR, 0); 
+                            gpio_set_level(SECONDFLOOR, 1); 
+                            vTaskDelay(1000/portTICK_PERIOD_MS); 
+
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(FIRSTFLOOR, 1);                     
+                        }   
+                        else if(RecStruc.curFloor == 2)
+                        {
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(SECONDFLOOR, 1); 
+                            gpio_set_level(THIRDFLOOR, 0); 
+                            gpio_set_level(FIRSTFLOOR, 0); 
+                            vTaskDelay(1000/portTICK_PERIOD_MS); 
+
+                            gpio_set_level(SECONDFLOOR, 0); 
+                            gpio_set_level(FIRSTFLOOR, 1); 
+                        }
+                        else
+                        {
+                            printf("going %c\n", RecStruc.direction);
+                            gpio_set_level(FIRSTFLOOR, 1);  
+                        }
                     }
-                }
-                else
+                    vTaskDelay(750/portTICK_PERIOD_MS); 
+                    curr = RecStruc.floorToGo; 
+                    duty = 500; //doors open
+                    printf("DOORS ARE OPEN\n");
+                    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, duty); 
+                    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0); 
+                    gpio_set_level(MOTOR, 0);
+                    gpio_set_level(BUZZ, 1); 
+                    vTaskDelay(150/portTICK_PERIOD_MS); 
+                    gpio_set_level(BUZZ, 0);  
+                    vTaskDelay(3000/portTICK_PERIOD_MS); 
+                    duty = 100; //doors close
+                    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, duty); 
+                    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0);
+                } 
+                else if(RecStruc.floorToGo == RecStruc.curFloor)
                 {
-                    if(RecStruc.curFloor == 3)
-                    {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(THIRDFLOOR, 1); 
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(FIRSTFLOOR, 0); 
-                        vTaskDelay(500/portTICK_PERIOD_MS);  
-
-                        gpio_set_level(THIRDFLOOR, 0); 
-                        gpio_set_level(SECONDFLOOR, 1); 
-                        vTaskDelay(500/portTICK_PERIOD_MS); 
-
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(FIRSTFLOOR, 1);                     
-                    }
-                    else if(RecStruc.curFloor == 2)
-                    {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(SECONDFLOOR, 1); 
-                        gpio_set_level(THIRDFLOOR, 0); 
-                        gpio_set_level(FIRSTFLOOR, 0); 
-                        vTaskDelay(500/portTICK_PERIOD_MS); 
-
-                        gpio_set_level(SECONDFLOOR, 0); 
-                        gpio_set_level(FIRSTFLOOR, 1); 
-
-                    }
-                    else
-                    {
-                        printf("going %c\n", RecStruc.direction);
-                        gpio_set_level(FIRSTFLOOR, 1);  
-                    }
+                    duty = 500; //open
+                    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, duty); 
+                    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0); 
+                    gpio_set_level(BUZZ, 1); 
+                    vTaskDelay(150/portTICK_PERIOD_MS); 
+                    gpio_set_level(BUZZ, 0);
+                    vTaskDelay(3000/portTICK_PERIOD_MS); 
+                    duty = 100; //close
+                    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, duty); 
+                    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0);  
                 }
-                vTaskDelay(500/portTICK_PERIOD_MS); 
-                curr = RecStruc.floorToGo; 
-                duty = 500; 
-                printf("DOORS ARE OPEN\n");
-                ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, duty); 
-                ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0); 
             }
         }
     }
@@ -758,6 +796,7 @@ void gpioSetUp()
     gpio_pad_select_gpio(SECONDFLOOR); 
     gpio_pad_select_gpio(THIRDFLOOR); 
     gpio_pad_select_gpio(BUZZ); 
+    gpio_pad_select_gpio(MOTOR); 
     gpio_set_direction(FIRSTFLOOR, GPIO_MODE_OUTPUT);
     gpio_set_level(FIRSTFLOOR, 1); 
     gpio_set_direction(SECONDFLOOR, GPIO_MODE_OUTPUT); 
@@ -766,6 +805,8 @@ void gpioSetUp()
     gpio_set_level(THIRDFLOOR, 0);  
     gpio_set_direction(BUZZ, GPIO_MODE_OUTPUT); 
     gpio_set_level(BUZZ, 0); 
+    gpio_set_direction(MOTOR, GPIO_MODE_OUTPUT); 
+    gpio_set_level(MOTOR, 0); 
 }
 void pwmSetUp()
 {
